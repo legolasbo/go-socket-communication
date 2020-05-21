@@ -50,7 +50,7 @@ func main() {
 type PrintHandler struct {
 }
 
-func (p PrintHandler) handle(msg string) {
+func (p PrintHandler) Handle(msg string) {
 	fmt.Println(msg)
 }
 ```

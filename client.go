@@ -8,7 +8,7 @@ import (
 )
 
 type MessageHandler interface {
-	handle(msg string)
+	Handle(msg string)
 }
 
 type Client struct {
@@ -110,7 +110,7 @@ func (c *Client) distributeMessages() {
 	for {
 		msg := <-c.messages
 		for _, handler := range c.handlers {
-			handler.handle(msg)
+			handler.Handle(msg)
 		}
 	}
 }
