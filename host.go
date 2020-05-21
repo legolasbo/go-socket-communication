@@ -9,7 +9,7 @@ import (
 
 // Host provides a way to send messages to clients that connect through a socket.
 type Host struct {
-	socketFile   string
+	connInfo     ConnectionInfo
 	listener     net.Listener
 	clients      []net.Conn
 	AddClient    chan net.Conn
@@ -18,9 +18,9 @@ type Host struct {
 }
 
 // NewHost creates a new host structure.
-func NewHost(socketFile string) *Host {
+func NewHost(info ConnectionInfo) *Host {
 	return &Host{
-		socketFile:   socketFile,
+		connInfo:     info,
 		AddClient:    make(chan net.Conn),
 		RemoveClient: make(chan net.Conn),
 		SendMessage:  make(chan string),
@@ -30,10 +30,14 @@ func NewHost(socketFile string) *Host {
 // Starts the host by initialising the socket and then listening for new connections.
 // Should always be called as a new goroutine to prevent blocking further execution.
 func (h *Host) Start() {
-	_ = os.Remove(h.socketFile)
-	listener, err := net.Listen("unix", h.socketFile)
+	address := h.connInfo.Address
+	if h.connInfo.Ctype == UNIX {
+		_ = os.Remove(address)
+	}
+	network := h.connInfo.Ctype.toString()
+	listener, err := net.Listen(network, address)
 	if err != nil {
-		log.Fatalf("Unable to listen on socket file %s: %s", h.socketFile, err)
+		log.Fatalf("Unable to listen to %s connections on %s: %s", network, address, err)
 	}
 	h.listener = listener
 	go h.listen()
@@ -75,7 +79,7 @@ func (h *Host) manageClients() {
 
 // Stops the host by closing the listener and all open connections.
 func (h *Host) Stop() {
-	h.listener.Close()
+	_ = h.listener.Close()
 	for _, c := range h.clients {
 		h.RemoveClient <- c
 	}

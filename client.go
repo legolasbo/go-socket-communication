@@ -12,7 +12,7 @@ type MessageHandler interface {
 }
 
 type Client struct {
-	socketFile    string
+	connInfo      ConnectionInfo
 	connection    net.Conn
 	AddHandler    chan MessageHandler
 	RemoveHandler chan MessageHandler
@@ -20,9 +20,9 @@ type Client struct {
 	handlers      []MessageHandler
 }
 
-func NewClient(socketFile string) *Client {
+func NewClient(info ConnectionInfo) *Client {
 	return &Client{
-		socketFile:    socketFile,
+		connInfo:      info,
 		AddHandler:    make(chan MessageHandler),
 		RemoveHandler: make(chan MessageHandler),
 		messages:      make(chan string),
@@ -34,7 +34,7 @@ func (c *Client) connect() {
 		if c.connection != nil {
 			c.connection.Close()
 		}
-		conn, err := net.Dial("unix", c.socketFile)
+		conn, err := net.Dial(c.connInfo.Ctype.toString(), c.connInfo.Address)
 		if err == nil {
 			c.connection = conn
 			break
@@ -47,7 +47,7 @@ func (c *Client) connect() {
 func (c *Client) Start() {
 	log.Println("Starting client...")
 	c.connect()
-	log.Printf("Connected through %s", c.socketFile)
+	log.Printf("Established a %s connection to %s", c.connInfo.Ctype.toString(), c.connInfo.Address)
 	go c.manageHandlers()
 	go c.distributeMessages()
 	go c.receive()
