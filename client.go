@@ -37,7 +37,7 @@ func (c *Client) connect() {
 		conn, err := net.Dial(c.connInfo.Ctype.toString(), c.connInfo.Address)
 		if err == nil {
 			c.connection = conn
-			break
+			return
 		}
 		log.Printf("Failed to dial: %s", err)
 		time.Sleep(5 * time.Second)
@@ -102,6 +102,7 @@ func (c *Client) manageHandlers() {
 			c.handlers = append(c.handlers, h)
 			break
 		default:
+			time.Sleep(time.Millisecond * 200)
 		}
 	}
 }
