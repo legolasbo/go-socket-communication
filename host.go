@@ -73,6 +73,7 @@ func (h *Host) manageClients() {
 			h.clients = append(h.clients, c)
 			break
 		default:
+			time.Sleep(200 * time.Millisecond)
 		}
 	}
 }
