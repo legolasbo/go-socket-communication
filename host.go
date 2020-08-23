@@ -9,12 +9,14 @@ import (
 
 // Host provides a way to send messages to clients that connect through a socket.
 type Host struct {
-	connInfo     ConnectionInfo
-	listener     net.Listener
-	clients      []net.Conn
-	AddClient    chan net.Conn
-	RemoveClient chan net.Conn
-	SendMessage  chan string
+	connInfo       ConnectionInfo
+	listener       net.Listener
+	clients        []net.Conn
+	lastActivity   time.Time
+	activityTimout time.Duration
+	AddClient      chan net.Conn
+	RemoveClient   chan net.Conn
+	SendMessage    chan string
 }
 
 // NewHost creates a new host structure.
@@ -30,6 +32,7 @@ func NewHost(info ConnectionInfo) *Host {
 // Starts the host by initialising the socket and then listening for new connections.
 // Should always be called as a new goroutine to prevent blocking further execution.
 func (h *Host) Start() {
+	h.SetActivityTimeout(10 * 365 * 24 * time.Hour)
 	address := h.connInfo.Address
 	if h.connInfo.Ctype == UNIX {
 		_ = os.Remove(address)
@@ -43,6 +46,7 @@ func (h *Host) Start() {
 	go h.listen()
 	go h.manageClients()
 	go h.messageSender()
+	go h.panicOnTimeout()
 }
 
 func (h *Host) listen() {
@@ -91,6 +95,8 @@ func (h *Host) messageSender() {
 	for {
 		msg := <-h.SendMessage
 
+		h.lastActivity = time.Now()
+
 		if msg[len(msg)-1] != '\n' {
 			msg += "\n"
 		}
@@ -107,4 +113,20 @@ func (h *Host) messageSender() {
 			}
 		}
 	}
+}
+
+func (h *Host) panicOnTimeout() {
+	ticker := time.NewTicker(time.Millisecond * 100)
+	for {
+		<-ticker.C
+		if time.Now().Sub(h.lastActivity) > h.activityTimout {
+			panic("It's been too long since the last message was sent!")
+		}
+	}
+}
+
+// Sets the duration after which we panic.
+func (h *Host) SetActivityTimeout(duration time.Duration) {
+	h.activityTimout = duration
+	h.lastActivity = time.Now()
 }
